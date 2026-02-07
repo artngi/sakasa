@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>逆さ言葉当てゲーム</title>
+    <style>
+        body {
+            font-family: "sans-serif";
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #game-container {
+            width: 380px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .score-label { font-size: 1.2em; margin-bottom: 5px; }
+        .main-label { font-size: 1.1em; margin-bottom: 15px; min-height: 2.4em; }
+        .word-display {
+            font-family: "monospace";
+            font-size: 24px;
+            font-weight: bold;
+            color: blue;
+            margin: 20px 0;
+            letter-spacing: 5px;
+        }
+        .input-display {
+            font-size: 1.5em;
+            background: white;
+            border: 2px solid #ccc;
+            height: 40px;
+            line-height: 40px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            min-height: 1.5em;
+        }
+        .control-btns {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 15px;
+        }
+        button {
+            padding: 8px 12px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .btn-roulette { background-color: #ADD8E6; }
+        .btn-submit { background-color: #90EE90; }
+        button:disabled { background-color: #eee; cursor: not-allowed; }
+
+        .keyboard {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 4px;
+        }
+        .kb-btn {
+            padding: 8px 0;
+            font-size: 16px;
+            background: #fff;
+        }
+        .kb-btn-wide { grid-column: span 2; }
+        .empty-slot { visibility: hidden; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div class="score-label" id="score-label">スコア: 0</div>
+    <div class="main-label" id="main-label">ルーレットを回してね！</div>
+    <div class="word-display" id="word-display">&nbsp;</div>
+    <div class="input-display" id="input-display"></div>
+
+    <div class="control-btns">
+        <button class="btn-roulette" id="btn-roulette" onclick="startRoulette()">ルーレット</button>
+        <button id="btn-reveal" onclick="revealChar()" disabled>ヒント</button>
+        <button class="btn-submit" onclick="checkAnswer()">回答</button>
+    </div>
+
+    <div class="keyboard" id="keyboard">
+        </div>
+</div>
+
+<script>
+// --- 語彙データ ---
+const WORDS = {
+    3: ["すいか", "きつね", "さくら", "くるま", "めだか", "いちご", "つくし", "とんぼ", "みかん", "めがね", "ばなな", "ぴあの", "うさぎ", "ごはん", "すずめ", "からす", "くじら", "ひこうき"],
+    4: ["ひまわり", "らいおん", "しんぶん", "えんぴつ", "おにぎり", "あさがお", "うぐいす", "かまきり", "にじゅう", "きょうと", "さんすう", "こくご", "りか", "しゃかい", "どろだんご", "せんせい", "ともだち", "きょうしつ", "てすと", "うんどう"],
+    5: ["こいのぼり", "どうぶつえん", "せんたくき", "おべんとう", "ようちえん", "しんかんせん", "すいぞくかん", "かぶとむし", "こうえん", "じどうしゃ", "とんかつ", "はんばーぐ", "おむらいす", "らんどせる", "たいいくかん", "としょかん", "なつやすみ", "ふゆやすみ", "あいうえお", "しゃぼんだま"],
+    6: ["どらえもん", "にほんりょうり", "すいぞくかん", "ゆうえんち", "ほっかいどう", "おしょうがつ", "えんそく", "おりがみ", "かきごおり", "すぺいん", "あめりか", "ちゅうごく", "にっぽん", "たこやき", "やきそば", "ほっとけーき", "だいどころ", "せんめんじょ"],
+    7: ["こうこうせいかつ", "ぷろぐらみんぐ", "ちきゅうおんだんか", "だいこんやくしゃ", "しょくぱんまん", "てれびげーむ", "じどうはんばいき", "しゃぼんだま", "かじだいじこ", "こうつうあんぜん", "なつまつり", "はなびたいかい", "おもちゃばこ", "ひこうきぐも", "すーぱーまーけっと", "しょくどう"]
+};
+
+let score = 0;
+let currentWord = "";
+let reversedWord = "";
+let displayChars = 0;
+let inputText = "";
+
+// キーボードの配置
+const chars = [
+    ["あ","い","う","え","お"], ["か","き","く","け","こ"],
+    ["さ","し","す","せ","そ"], ["た","ち","つ","て","と"],
+    ["な","に","ぬ","ね","の"], ["は","ひ","ふ","へ","ほ"],
+    ["ま","み","む","め","も"], ["や","ゆ","よ"," "," "],
+    ["ら","り","る","れ","ろ"], ["わ","を","ん"," "," "],
+    ["ー","っ","小","゛゜","消去"]
+];
+
+const kbContainer = document.getElementById('keyboard');
+chars.forEach(row => {
+    row.forEach(char => {
+        const btn = document.createElement('button');
+        if (char === " ") {
+            btn.className = "empty-slot";
+        } else {
+            btn.innerText = char;
+            btn.className = "kb-btn";
+            if (char === "消去") btn.classList.add("kb-btn-wide");
+            btn.onclick = () => kbClick(char);
+        }
+        kbContainer.appendChild(btn);
+    });
+});
+
+function kbClick(char) {
+    if (char === "消去") {
+        inputText = inputText.slice(0, -1);
+    } else if (char === "゛゜") {
+        applyDakuten();
+    } else if (char === "小") {
+        applySmall();
+    } else {
+        inputText += char;
+    }
+    document.getElementById('input-display').innerText = inputText;
+}
+
+function applyDakuten() {
+    const map = {
+        "か":"が", "き":"ぎ", "く":"ぐ", "け":"げ", "こ":"ご",
+        "さ":"ざ", "し":"じ", "す":"ず", "せ":"ぜ", "そ":"ぞ",
+        "た":"だ", "ち":"ぢ", "つ":"づ", "て":"で", "と":"ど",
+        "は":"ば", "ひ":"び", "ふ":"ぶ", "へ":"べ", "ほ":"ぼ",
+        "が":"か", "ぎ":"き", "ぐ":"く", "げ":"け", "ご":"こ",
+        "ざ":"さ", "じ":"し", "ず":"す", "ぜ":"せ", "ぞ":"そ",
+        "だ":"た", "ぢ":"ち", "づ":"つ", "て":"て", "ど":"と",
+        "ば":"ぱ", "び":"ぴ", "ぶ":"ぷ", "べ":"ぺ", "ぼ":"ぽ",
+        "ぱ":"は", "ぴ":"ひ", "ぷ":"ふ", "ぺ":"へ", "ぽ":"ほ"
+    };
+    let last = inputText.slice(-1);
+    if (map[last]) inputText = inputText.slice(0, -1) + map[last];
+    document.getElementById('input-display').innerText = inputText;
+}
+
+function applySmall() {
+    const map = {
+        "あ":"ぁ", "い":"ぃ", "う":"ぅ", "え":"ぇ", "お":"ぉ",
+        "や":"ゃ", "ゆ":"ゅ", "よ":"ょ", "つ":"っ",
+        "ぁ":"あ", "ぃ":"い", "ぅ":"う", "ぇ":"え", "ぉ":"お",
+        "ゃ":"や", "ゅ":"ゆ", "ょ":"よ", "っ":"つ"
+    };
+    let last = inputText.slice(-1);
+    if (map[last]) inputText = inputText.slice(0, -1) + map[last];
+    document.getElementById('input-display').innerText = inputText;
+}
+
+async function startRoulette() {
+    inputText = "";
+    document.getElementById('input-display').innerText = "";
+    document.getElementById('btn-roulette').disabled = true;
+    
+    for (let i = 0; i < 8; i++) {
+        let l = Math.floor(Math.random() * 5) + 3;
+        document.getElementById('main-label').innerText = `抽選中... ${l}文字`;
+        await new Promise(r => setTimeout(r, 80));
+    }
+    
+    const length = Math.floor(Math.random() * 5) + 3;
+    const wordList = WORDS[length];
+    currentWord = wordList[Math.floor(Math.random() * wordList.length)];
+    reversedWord = currentWord.split('').reverse().join('');
+    displayChars = 0;
+    
+    document.getElementById('main-label').innerText = `【 ${currentWord.length}文字 】の言葉を当ててね！`;
+    updateWordDisplay();
+    document.getElementById('btn-reveal').disabled = false;
+}
+
+function updateWordDisplay() {
+    let display = "";
+    for (let i = 0; i < reversedWord.length; i++) {
+        display += (i < displayChars) ? reversedWord[i] : "□";
+    }
+    document.getElementById('word-display').innerText = display;
+}
+
+function revealChar() {
+    if (displayChars < reversedWord.length) {
+        displayChars++;
+        updateWordDisplay();
+    }
+    if (displayChars >= reversedWord.length) {
+        document.getElementById('btn-reveal').disabled = true;
+    }
+}
+
+function checkAnswer() {
+    if (inputText === currentWord) {
+        let points = Math.max(reversedWord.length - displayChars, 0);
+        score += points;
+        alert(`正解\n当たり！「${currentWord}」\n${points}点ゲット！`);
+        resetRound();
+    } else if (inputText !== "") {
+        alert("残念\nちがうよ！");
+    }
+}
+
+function resetRound() {
+    document.getElementById('score-label').innerText = `スコア: ${score}`;
+    inputText = "";
+    document.getElementById('input-display').innerText = "";
+    document.getElementById('btn-roulette').disabled = false;
+    document.getElementById('btn-reveal').disabled = true;
+    document.getElementById('word-display').innerHTML = "&nbsp;";
+}
+</script>
+
+</body>
+</html>
