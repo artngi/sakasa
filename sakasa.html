@@ -22,8 +22,9 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             text-align: center;
         }
+        .mode-selector { margin-bottom: 15px; }
         .score-label { font-size: 1.2em; margin-bottom: 5px; }
-        .main-label { font-size: 1.1em; margin-bottom: 15px; min-height: 2.4em; }
+        .main-label { font-size: 1.1em; margin-bottom: 15px; min-height: 2.4em; color: #333; }
         .word-display {
             font-family: "monospace";
             font-size: 24px;
@@ -54,9 +55,10 @@
             border-radius: 4px;
             font-size: 14px;
         }
-        .btn-roulette { background-color: #ADD8E6; }
-        .btn-submit { background-color: #90EE90; }
-        button:disabled { background-color: #eee; cursor: not-allowed; }
+        .btn-roulette { background-color: #ADD8E6; font-weight: bold; }
+        .btn-submit { background-color: #90EE90; font-weight: bold; }
+        .btn-mode { background-color: #ffd700; font-weight: bold; width: 100%; }
+        button:disabled { background-color: #eee; cursor: not-allowed; color: #aaa; }
 
         .keyboard {
             display: grid;
@@ -75,6 +77,10 @@
 <body>
 
 <div id="game-container">
+    <div class="mode-selector">
+        <button id="btn-mode-toggle" class="btn-mode" onclick="toggleMode()">モード: ひらがな</button>
+    </div>
+
     <div class="score-label" id="score-label">スコア: 0</div>
     <div class="main-label" id="main-label">ルーレットを回してね！</div>
     <div class="word-display" id="word-display">&nbsp;</div>
@@ -86,18 +92,26 @@
         <button class="btn-submit" onclick="checkAnswer()">回答</button>
     </div>
 
-    <div class="keyboard" id="keyboard">
-        </div>
+    <div class="keyboard" id="keyboard"></div>
 </div>
 
 <script>
-// --- 語彙データ ---
+// --- モード別・3年生向け語彙データ ---
 const WORDS = {
-    3: ["すいか", "きつね", "さくら", "くるま", "めだか", "いちご", "つくし", "とんぼ", "みかん", "めがね", "ばなな", "ぴあの", "うさぎ", "ごはん", "すずめ", "からす", "くじら", "ひこうき"],
-    4: ["ひまわり", "らいおん", "しんぶん", "えんぴつ", "おにぎり", "あさがお", "うぐいす", "かまきり", "にじゅう", "きょうと", "さんすう", "こくご", "りか", "しゃかい", "どろだんご", "せんせい", "ともだち", "きょうしつ", "てすと", "うんどう"],
-    5: ["こいのぼり", "どうぶつえん", "せんたくき", "おべんとう", "ようちえん", "しんかんせん", "すいぞくかん", "かぶとむし", "こうえん", "じどうしゃ", "とんかつ", "はんばーぐ", "おむらいす", "らんどせる", "たいいくかん", "としょかん", "なつやすみ", "ふゆやすみ", "あいうえお", "しゃぼんだま"],
-    6: ["どらえもん", "にほんりょうり", "すいぞくかん", "ゆうえんち", "ほっかいどう", "おしょうがつ", "えんそく", "おりがみ", "かきごおり", "すぺいん", "あめりか", "ちゅうごく", "にっぽん", "たこやき", "やきそば", "ほっとけーき", "だいどころ", "せんめんじょ"],
-    7: ["こうこうせいかつ", "ぷろぐらみんぐ", "ちきゅうおんだんか", "だいこんやくしゃ", "しょくぱんまん", "てれびげーむ", "じどうはんばいき", "しゃぼんだま", "かじだいじこ", "こうつうあんぜん", "なつまつり", "はなびたいかい", "おもちゃばこ", "ひこうきぐも", "すーぱーまーけっと", "しょくどう"]
+    hiragana: {
+        3: ["すいか", "きつね", "さくら", "くるま", "めだか", "いちご", "つくえ", "たぬき", "おむすび", "ひみつ", "すずめ", "からす", "うちわ"],
+        4: ["ひまわり", "らいおん", "おにぎり", "あさがお", "せんせい", "えんぴつ", "ともだち", "しんぶん", "ふうせん", "てんとうむし", "にじゅう", "どうぶつ"],
+        5: ["こいのぼり", "おべんとう", "ようちえん", "しゃぼんだま", "かたつむり", "おとしだま", "なつやすみ", "ほしぞら", "じどうしゃ", "すいぞくかん"],
+        6: ["どらえもん", "ゆうえんち", "おしょうがつ", "とうもろこし", "きょうしつ", "せんたくき", "しょくどう", "たんじょうび", "どうぶつえん"],
+        7: ["ぷろぐらみんぐ", "なつまつり", "おもちゃばこ", "ひこうきぐも", "としょかん", "てれびげーむ", "じどうはんばいき", "こうつうあんぜん"]
+    },
+    katakana: {
+        3: ["アイス", "ピアノ", "バナナ", "コアラ", "マスク", "カメラ", "コップ", "パンダ", "ヨット", "メダル", "ラッパ", "ドア", "ノート"],
+        4: ["ライオン", "テレビ", "ノート", "トイレ", "ケーキ", "ギター", "クレヨン", "ロボット", "マスク", "メロン", "レモン", "パトカー"],
+        5: ["チョコレート", "パトカー", "ハンバーグ", "ランドセル", "サッカー", "デザート", "ピクニック", "マフラー", "カレンダー", "マラソン"],
+        6: ["スマートフォン", "アイスクリーム", "プログラミング", "ヘリコプター", "パトロール", "バイオリン", "レストラン", "ペンギン"],
+        7: ["スーパーマーケット", "オートバイ", "ハンバーガー", "サンドイッチ", "クリスマス", "オムライス", "バドミントン", "ボランティア"]
+    }
 };
 
 let score = 0;
@@ -105,32 +119,53 @@ let currentWord = "";
 let reversedWord = "";
 let displayChars = 0;
 let inputText = "";
+let currentLanguage = "hiragana";
 
-// キーボードの配置
-const chars = [
-    ["あ","い","う","え","お"], ["か","き","く","け","こ"],
-    ["さ","し","す","せ","そ"], ["た","ち","つ","て","と"],
-    ["な","に","ぬ","ね","の"], ["は","ひ","ふ","へ","ほ"],
-    ["ま","み","む","め","も"], ["や","ゆ","よ"," "," "],
-    ["ら","り","る","れ","ろ"], ["わ","を","ん"," "," "],
-    ["ー","っ","小","゛゜","消去"]
-];
+function toggleMode() {
+    currentLanguage = (currentLanguage === "hiragana") ? "katakana" : "hiragana";
+    document.getElementById('btn-mode-toggle').innerText = `モード: ${currentLanguage === "hiragana" ? "ひらがな" : "カタカナ"}`;
+    createKeyboard();
+    // モードを変えたときに現在の表示もクリアする
+    document.getElementById('word-display').innerHTML = "&nbsp;";
+    document.getElementById('main-label').innerText = "モードを変えたよ！ルーレットを回してね！";
+    inputText = "";
+    document.getElementById('input-display').innerText = "";
+}
 
-const kbContainer = document.getElementById('keyboard');
-chars.forEach(row => {
-    row.forEach(char => {
-        const btn = document.createElement('button');
-        if (char === " ") {
-            btn.className = "empty-slot";
-        } else {
-            btn.innerText = char;
-            btn.className = "kb-btn";
-            if (char === "消去") btn.classList.add("kb-btn-wide");
-            btn.onclick = () => kbClick(char);
-        }
-        kbContainer.appendChild(btn);
+function createKeyboard() {
+    const kbContainer = document.getElementById('keyboard');
+    kbContainer.innerHTML = "";
+
+    const hiraChars = [
+        ["あ","い","う","え","お"], ["か","き","く","け","こ"],
+        ["さ","し","す","せ","そ"], ["た","ち","つ","て","と"],
+        ["な","に","ぬ","ね","の"], ["は","ひ","ふ","へ","ほ"],
+        ["ま","み","む","め","も"], ["や","ゆ","よ"," "," "],
+        ["ら","り","る","れ","ろ"], ["わ","を","ん"," "," "],
+        ["ー","っ","小","゛゜","消去"]
+    ];
+
+    const toKata = (str) => str.replace(/[ぁ-ん]/g, s => String.fromCharCode(s.charCodeAt(0) + 0x60));
+
+    hiraChars.forEach(row => {
+        row.forEach(char => {
+            const btn = document.createElement('button');
+            if (char === " ") {
+                btn.className = "empty-slot";
+            } else {
+                let displayChar = char;
+                if (currentLanguage === "katakana" && char.match(/[ぁ-ん]/)) {
+                    displayChar = toKata(char);
+                }
+                btn.innerText = displayChar;
+                btn.className = "kb-btn";
+                if (char === "消去") btn.classList.add("kb-btn-wide");
+                btn.onclick = () => kbClick(displayChar);
+            }
+            kbContainer.appendChild(btn);
+        });
     });
-});
+}
 
 function kbClick(char) {
     if (char === "消去") {
@@ -146,28 +181,33 @@ function kbClick(char) {
 }
 
 function applyDakuten() {
-    const map = {
-        "か":"が", "き":"ぎ", "く":"ぐ", "け":"げ", "こ":"ご",
-        "さ":"ざ", "し":"じ", "す":"ず", "せ":"ぜ", "そ":"ぞ",
-        "た":"だ", "ち":"ぢ", "つ":"づ", "て":"で", "と":"ど",
-        "は":"ば", "ひ":"び", "ふ":"ぶ", "へ":"べ", "ほ":"ぼ",
-        "が":"か", "ぎ":"き", "ぐ":"く", "げ":"け", "ご":"こ",
-        "ざ":"さ", "じ":"し", "ず":"す", "ぜ":"せ", "ぞ":"そ",
-        "だ":"た", "ぢ":"ち", "づ":"つ", "て":"て", "ど":"と",
-        "ば":"ぱ", "び":"ぴ", "ぶ":"ぷ", "べ":"ぺ", "ぼ":"ぽ",
-        "ぱ":"は", "ぴ":"ひ", "ぷ":"ふ", "ぺ":"へ", "ぽ":"ほ"
+    const cycle = {
+        "は":"ば", "ば":"ぱ", "ぱ":"は", "ひ":"び", "び":"ぴ", "ぴ":"ひ",
+        "ふ":"ぶ", "ぶ":"ぷ", "ぷ":"ふ", "へ":"べ", "べ":"ぺ", "ぺ":"へ",
+        "ほ":"ぼ", "ぼ":"ぽ", "ぽ":"ほ",
+        "ハ":"バ", "バ":"パ", "パ":"ハ", "ヒ":"ビ", "ビ":"ピ", "ピ":"ヒ",
+        "フ":"ブ", "ブ":"プ", "プ":"フ", "ヘ":"ベ", "ベ":"ペ", "ペ":"ヘ",
+        "ホ":"ボ", "ボ":"ポ", "ポ":"ホ",
+        "か":"が", "が":"か", "き":"ぎ", "ぎ":"き", "く":"ぐ", "ぐ":"く", "け":"げ", "げ":"け", "こ":"ご", "ご":"こ",
+        "さ":"ざ", "ざ":"さ", "し":"じ", "じ":"し", "す":"ず", "ず":"す", "せ":"ぜ", "ぜ":"せ", "そ":"ぞ", "ぞ":"そ",
+        "た":"だ", "だ":"た", "ち":"ぢ", "ぢ":"ち", "つ":"づ", "づ":"つ", "て":"で", "で":"て", "と":"ど", "ど":"と",
+        "カ":"ガ", "ガ":"カ", "キ":"ギ", "ギ":"キ", "ク":"グ", "グ":"ク", "ケ":"ゲ", "ゲ":"ケ", "コ":"ゴ", "ゴ":"コ",
+        "サ":"ザ", "ザ":"サ", "シ":"ジ", "ジ":"シ", "ス":"ズ", "ズ":"ス", "セ":"ゼ", "ゼ":"セ", "ソ":"ゾ", "ゾ":"ソ",
+        "タ":"ダ", "ダ":"タ", "チ":"ヂ", "ヂ":"チ", "ツ":"ヅ", "ヅ":"ツ", "テ":"デ", "デ":"テ", "ト":"ド", "ド":"ト"
     };
     let last = inputText.slice(-1);
-    if (map[last]) inputText = inputText.slice(0, -1) + map[last];
+    if (cycle[last]) {
+        inputText = inputText.slice(0, -1) + cycle[last];
+    }
     document.getElementById('input-display').innerText = inputText;
 }
 
 function applySmall() {
     const map = {
-        "あ":"ぁ", "い":"ぃ", "う":"ぅ", "え":"ぇ", "お":"ぉ",
-        "や":"ゃ", "ゆ":"ゅ", "よ":"ょ", "つ":"っ",
-        "ぁ":"あ", "ぃ":"い", "ぅ":"う", "ぇ":"え", "ぉ":"お",
-        "ゃ":"や", "ゅ":"ゆ", "ょ":"よ", "っ":"つ"
+        "あ":"ぁ","い":"ぃ","う":"ぅ","え":"ぇ","お":"ぉ","や":"ゃ","ゆ":"ゅ","よ":"ょ","つ":"っ",
+        "ア":"ァ","イ":"ィ","ウ":"ゥ","エ":"ェ","オ":"ォ","ヤ":"ャ","ユ":"ュ","ョ":"ヨ","ツ":"ッ",
+        "ぁ":"あ","ぃ":"い","ぅ":"う","ぇ":"え","ぉ":"お","ゃ":"や","ゅ":"ゆ","ょ":"よ","っ":"つ",
+        "ァ":"ア","ィ":"イ","ゥ":"ウ","ェ":"エ","ォ":"オ","ャ":"ヤ","ュ":"ユ","ョ":"ヨ","ッ":"ツ"
     };
     let last = inputText.slice(-1);
     if (map[last]) inputText = inputText.slice(0, -1) + map[last];
@@ -178,6 +218,7 @@ async function startRoulette() {
     inputText = "";
     document.getElementById('input-display').innerText = "";
     document.getElementById('btn-roulette').disabled = true;
+    document.getElementById('btn-mode-toggle').disabled = true; // プレイ中はモード変更不可
     
     for (let i = 0; i < 8; i++) {
         let l = Math.floor(Math.random() * 5) + 3;
@@ -186,12 +227,13 @@ async function startRoulette() {
     }
     
     const length = Math.floor(Math.random() * 5) + 3;
-    const wordList = WORDS[length];
+    const wordList = WORDS[currentLanguage][length];
     currentWord = wordList[Math.floor(Math.random() * wordList.length)];
+    
     reversedWord = currentWord.split('').reverse().join('');
     displayChars = 0;
     
-    document.getElementById('main-label').innerText = `【 ${currentWord.length}文字 】の言葉を当ててね！`;
+    document.getElementById('main-label').innerText = `【 ${currentWord.length}文字 】を当ててね！`;
     updateWordDisplay();
     document.getElementById('btn-reveal').disabled = false;
 }
@@ -218,10 +260,10 @@ function checkAnswer() {
     if (inputText === currentWord) {
         let points = Math.max(reversedWord.length - displayChars, 0);
         score += points;
-        alert(`正解\n当たり！「${currentWord}」\n${points}点ゲット！`);
+        alert(`正解！\n答えは「${currentWord}」でした！\n${points}点ゲット！`);
         resetRound();
     } else if (inputText !== "") {
-        alert("残念\nちがうよ！");
+        alert("残念！ちがうよ！");
     }
 }
 
@@ -230,9 +272,13 @@ function resetRound() {
     inputText = "";
     document.getElementById('input-display').innerText = "";
     document.getElementById('btn-roulette').disabled = false;
+    document.getElementById('btn-mode-toggle').disabled = false; // モード変更を再び可能にする
     document.getElementById('btn-reveal').disabled = true;
     document.getElementById('word-display').innerHTML = "&nbsp;";
+    document.getElementById('main-label').innerText = "ルーレットを回してね！";
 }
+
+createKeyboard();
 </script>
 
 </body>
