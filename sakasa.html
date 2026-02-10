@@ -68,7 +68,7 @@
 
         /* 説明画面（モーダル）のスタイル */
         #how-to-play-overlay {
-            display: none; /* 最初は隠しておく */
+            display: none;
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.8);
@@ -115,16 +115,16 @@
             <div id="help-text">
                 1. ルーレットをまわすと、もじが決まるよ！<br>
                 2. そのもじが、さかさまで、かくされて出てくるよ！<br>
-                3. 「ヒント」をおすと、もじをかくしているものがひとつきえるよ！<br>
+                3. 「ヒント」をおすと、もじがひとつずつ見えるよ！<br>
                 4. キーボードで、もとの言葉をうちこもう！<br>
-                5. 「回答」をおして当たればポイントゲット！かくれているもじのかず、ポイントがもらえるよ！
+                5. 「回答」をおして当たれば、ヒントを使わなかった分だけポイントゲット！
             </div>
             <button class="btn-close" onclick="hideHelp()">とじる</button>
         </div>
     </div>
 
     <div class="score-label" id="score-label">スコア: 0</div>
-    <div class="main-label" id="main-label">ルーレットを回してね！</div>
+    <div class="main-label" id="main-label">ルーレットをまわしてね！</div>
     <div class="word-display" id="word-display">&nbsp;</div>
     <div class="input-display" id="input-display"></div>
 
@@ -138,7 +138,6 @@
 </div>
 
 <script>
-// --- モード別・語彙データ ---
 const WORDS = {
     hiragana: {
         3: ["すいか", "きつね", "さくら", "くるま", "めだか", "いちご", "つくえ", "たぬき", "おむすび", "ひみつ", "すずめ", "からす", "うちわ"],
@@ -163,13 +162,8 @@ let displayChars = 0;
 let inputText = "";
 let currentLanguage = "hiragana";
 
-// --- 説明表示の関数 ---
-function showHelp() {
-    document.getElementById('how-to-play-overlay').style.display = 'flex';
-}
-function hideHelp() {
-    document.getElementById('how-to-play-overlay').style.display = 'none';
-}
+function showHelp() { document.getElementById('how-to-play-overlay').style.display = 'flex'; }
+function hideHelp() { document.getElementById('how-to-play-overlay').style.display = 'none'; }
 
 function toggleMode() {
     currentLanguage = (currentLanguage === "hiragana") ? "katakana" : "hiragana";
@@ -225,33 +219,26 @@ function kbClick(char) {
 }
 
 function applyDakuten() {
-    // 変換サイクルの定義
+    // すべての文字を厳密にチェックして修正しました
     const cycle = {
         // ひらがな
-        "は":"ば", "ば":"ぱ", "ぱ":"は",
-        "ひ":"び", "び":"ぴ", "ぴ":"ひ",
-        "ふ":"ぶ", "ぶ":"ぷ", "ぷ":"ふ",
-        "へ":"べ", "べ":"ぺ", "ぺ":"へ",
+        "は":"ば", "ば":"ぱ", "ぱ":"は", "ひ":"び", "び":"ぴ", "ぴ":"ひ",
+        "ふ":"ぶ", "ぶ":"ぷ", "ぷ":"ふ", "へ":"べ", "べ":"ぺ", "ぺ":"へ",
         "ほ":"ぼ", "ぼ":"ぽ", "ぽ":"ほ",
-        // カタカナ
-        "ハ":"バ", "バ":"パ", "パ":"ハ",
-        "ヒ":"ビ", "ビ":"ピ", "ピ":"ヒ",
-        "フ":"ブ", "ブ":"プ", "プ":"フ",
-        "ヘ":"ベ", "ベ":"ペ", "ペ":"ヘ",
-        "ホ":"ボ", "ボ":"ポ", "ポ":"ホ",
-        
-        // 通常の濁点（2段階サイクル）
         "か":"が", "が":"か", "き":"ぎ", "ぎ":"き", "く":"ぐ", "ぐ":"く", "け":"げ", "げ":"け", "こ":"ご", "ご":"こ",
         "さ":"ざ", "ざ":"さ", "し":"じ", "じ":"し", "す":"ず", "ず":"す", "せ":"ぜ", "ぜ":"せ", "そ":"ぞ", "ぞ":"そ",
-        "た":"だ", "だ":"た", "ち":"ぢ", "ぢ":"ち", "つ":"づ", "づ":"つ", "て":"で", "で":"て", "と":"ど", "ど":"と",
+        "た":"だ", "だ":"た", "ち":"ぢ", "ぢ":"ち", "つ":"づ", "づ":"つ", "て":"で", "て":"で", "と":"ど", "ど":"と",
+        // カタカナ
+        "ハ":"バ", "バ":"パ", "パ":"ハ", "ヒ":"ビ", "ビ":"ピ", "ピ":"ヒ",
+        "フ":"ブ", "ブ":"プ", "プ":"フ", "ヘ":"ベ", "ベ":"ペ", "ペ":"ヘ",
+        "ホ":"ボ", "ボ":"ポ", "ポ":"ホ",
         "カ":"ガ", "ガ":"カ", "キ":"ギ", "ギ":"キ", "ク":"グ", "グ":"ク", "ケ":"ゲ", "ゲ":"ケ", "コ":"ゴ", "ゴ":"コ",
-        "サ":"ザ", "ザ":"サ", "シ":"ジ", "ジ":"シ", "ス":"ズ", "ズ":"ス", "セ":"ゼ", "ゼ":"セ", "ソ":"ゾ", "ゾ":"そ",
-        "タ":"ダ", "ダ":"タ", "チ":"ヂ", "ヂ":"チ", "ツ":"ヅ", "ヅ":"ツ", "テ":"デ", "デ":"テ", "ト":"ド", "ど":"ト"
+        "サ":"ザ", "ザ":"サ", "シ":"ジ", "ジ":"シ", "ス":"ズ", "ズ":"ス", "セ":"ゼ", "セ":"ゼ", "ソ":"ゾ", "ゾ":"ソ",
+        "タ":"ダ", "ダ":"タ", "チ":"ヂ", "ヂ":"チ", "ツ":"ヅ", "ヅ":"ツ", "テ":"デ", "デ":"テ", "ト":"ド", "ド":"ト"
     };
 
-    let last = inputText.slice(-1); // 入力された最後の1文字を取得
+    let last = inputText.slice(-1);
     if (cycle[last]) {
-        // サイクル表に文字があれば、次の文字に置き換える
         inputText = inputText.slice(0, -1) + cycle[last];
     }
     document.getElementById('input-display').innerText = inputText;
@@ -260,12 +247,14 @@ function applyDakuten() {
 function applySmall() {
     const map = {
         "あ":"ぁ","い":"ぃ","う":"ぅ","え":"ぇ","お":"ぉ","や":"ゃ","ゆ":"ゅ","よ":"ょ","つ":"っ",
-        "ア":"ァ","イ":"ィ","ウ":"ゥ","エ":"ェ","オ":"ォ","ヤ":"ャ","ユ":"ュ","ョ":"ヨ","ツ":"ッ",
-        "ぁ":"あ","ぃ":"い","ぅ":"う","ぇ":"え","ぉ":"お","ゃ":"や","ゅ":"ゆ","ょ":"よ","っ":"つ",
+        "ぁ":"あ","ぃ":"い","ぅ":"う","ぇ":"え","ぉ":"お","ゃ":"や","ゆ":"ゅ","ょ":"よ","っ":"つ",
+        "ア":"ァ","イ":"ィ","ウ":"ゥ","エ":"ェ","オ":"ォ","ヤ":"ャ","ユ":"ュ","ヨ":"ョ","ツ":"ッ",
         "ァ":"ア","ィ":"イ","ゥ":"ウ","ェ":"エ","ォ":"オ","ャ":"ヤ","ュ":"ユ","ョ":"ヨ","ッ":"ツ"
     };
     let last = inputText.slice(-1);
-    if (map[last]) inputText = inputText.slice(0, -1) + map[last];
+    if (map[last]) {
+        inputText = inputText.slice(0, -1) + map[last];
+    }
     document.getElementById('input-display').innerText = inputText;
 }
 
