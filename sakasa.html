@@ -21,8 +21,13 @@
             border-radius: 10px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             text-align: center;
+            position: relative;
         }
-        .mode-selector { margin-bottom: 15px; }
+        .top-btns {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
         .score-label { font-size: 1.2em; margin-bottom: 5px; }
         .main-label { font-size: 1.1em; margin-bottom: 15px; min-height: 2.4em; color: #333; }
         .word-display {
@@ -57,19 +62,41 @@
         }
         .btn-roulette { background-color: #ADD8E6; font-weight: bold; }
         .btn-submit { background-color: #90EE90; font-weight: bold; }
-        .btn-mode { background-color: #ffd700; font-weight: bold; width: 100%; }
+        .btn-mode { background-color: #ffd700; font-weight: bold; flex: 2; }
+        .btn-help { background-color: #ffb6c1; font-weight: bold; flex: 1; }
         button:disabled { background-color: #eee; cursor: not-allowed; color: #aaa; }
+
+        /* 説明画面（モーダル）のスタイル */
+        #how-to-play-overlay {
+            display: none; /* 最初は隠しておく */
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            border-radius: 10px;
+            color: white;
+            z-index: 10;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            padding: 20px;
+            text-align: left;
+        }
+        .modal-content h2 { border-bottom: 2px solid white; padding-bottom: 5px; text-align: center; }
+        .btn-close {
+            display: block;
+            margin: 20px auto 0;
+            background: white;
+            color: black;
+            font-weight: bold;
+        }
 
         .keyboard {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
             gap: 4px;
         }
-        .kb-btn {
-            padding: 8px 0;
-            font-size: 16px;
-            background: #fff;
-        }
+        .kb-btn { padding: 8px 0; font-size: 16px; background: #fff; }
         .kb-btn-wide { grid-column: span 2; }
         .empty-slot { visibility: hidden; }
     </style>
@@ -77,8 +104,23 @@
 <body>
 
 <div id="game-container">
-    <div class="mode-selector">
+    <div class="top-btns">
         <button id="btn-mode-toggle" class="btn-mode" onclick="toggleMode()">モード: ひらがな</button>
+        <button class="btn-help" onclick="showHelp()">遊び方</button>
+    </div>
+
+    <div id="how-to-play-overlay">
+        <div class="modal-content">
+            <h2>あそびかた</h2>
+            <div id="help-text">
+                1. ルーレットをまわすと、もじが決まるよ！<br>
+                2. そのもじが、さかさまで、かくされて出てくるよ！<br>
+                3. 「ヒント」をおすと、もじをかくしているものがひとつきえるよ！<br>
+                4. キーボードで、もとの言葉をうちこもう！<br>
+                5. 「回答」をおして当たればポイントゲット！かくれているもじのかず、ポイントがもらえるよ！
+            </div>
+            <button class="btn-close" onclick="hideHelp()">とじる</button>
+        </div>
     </div>
 
     <div class="score-label" id="score-label">スコア: 0</div>
@@ -96,7 +138,7 @@
 </div>
 
 <script>
-// --- モード別・3年生向け語彙データ ---
+// --- モード別・語彙データ ---
 const WORDS = {
     hiragana: {
         3: ["すいか", "きつね", "さくら", "くるま", "めだか", "いちご", "つくえ", "たぬき", "おむすび", "ひみつ", "すずめ", "からす", "うちわ"],
@@ -121,21 +163,24 @@ let displayChars = 0;
 let inputText = "";
 let currentLanguage = "hiragana";
 
+// --- 説明表示の関数 ---
+function showHelp() {
+    document.getElementById('how-to-play-overlay').style.display = 'flex';
+}
+function hideHelp() {
+    document.getElementById('how-to-play-overlay').style.display = 'none';
+}
+
 function toggleMode() {
     currentLanguage = (currentLanguage === "hiragana") ? "katakana" : "hiragana";
     document.getElementById('btn-mode-toggle').innerText = `モード: ${currentLanguage === "hiragana" ? "ひらがな" : "カタカナ"}`;
     createKeyboard();
-    // モードを変えたときに現在の表示もクリアする
-    document.getElementById('word-display').innerHTML = "&nbsp;";
-    document.getElementById('main-label').innerText = "モードを変えたよ！ルーレットを回してね！";
-    inputText = "";
-    document.getElementById('input-display').innerText = "";
+    resetRound();
 }
 
 function createKeyboard() {
     const kbContainer = document.getElementById('keyboard');
     kbContainer.innerHTML = "";
-
     const hiraChars = [
         ["あ","い","う","え","お"], ["か","き","く","け","こ"],
         ["さ","し","す","せ","そ"], ["た","ち","つ","て","と"],
@@ -144,7 +189,6 @@ function createKeyboard() {
         ["ら","り","る","れ","ろ"], ["わ","を","ん"," "," "],
         ["ー","っ","小","゛゜","消去"]
     ];
-
     const toKata = (str) => str.replace(/[ぁ-ん]/g, s => String.fromCharCode(s.charCodeAt(0) + 0x60));
 
     hiraChars.forEach(row => {
@@ -186,19 +230,17 @@ function applyDakuten() {
         "ふ":"ぶ", "ぶ":"ぷ", "ぷ":"ふ", "へ":"べ", "べ":"ぺ", "ぺ":"へ",
         "ほ":"ぼ", "ぼ":"ぽ", "ぽ":"ほ",
         "ハ":"バ", "バ":"パ", "パ":"ハ", "ヒ":"ビ", "ビ":"ピ", "ピ":"ヒ",
-        "フ":"ブ", "ブ":"プ", "プ":"フ", "ヘ":"ベ", "ベ":"ペ", "ペ":"ヘ",
+        "フ":"ブ", "ブ":"プ", "フ":"フ", "ヘ":"ベ", "ベ":"ペ", "ペ":"ヘ",
         "ホ":"ボ", "ボ":"ポ", "ポ":"ホ",
         "か":"が", "が":"か", "き":"ぎ", "ぎ":"き", "く":"ぐ", "ぐ":"く", "け":"げ", "げ":"け", "こ":"ご", "ご":"こ",
         "さ":"ざ", "ざ":"さ", "し":"じ", "じ":"し", "す":"ず", "ず":"す", "せ":"ぜ", "ぜ":"せ", "そ":"ぞ", "ぞ":"そ",
         "た":"だ", "だ":"た", "ち":"ぢ", "ぢ":"ち", "つ":"づ", "づ":"つ", "て":"で", "で":"て", "と":"ど", "ど":"と",
-        "カ":"ガ", "ガ":"カ", "キ":"ギ", "ギ":"キ", "ク":"グ", "グ":"ク", "ケ":"ゲ", "ゲ":"ケ", "コ":"ゴ", "ゴ":"コ",
-        "サ":"ザ", "ザ":"サ", "シ":"ジ", "ジ":"シ", "ス":"ズ", "ズ":"ス", "セ":"ゼ", "ゼ":"セ", "ソ":"ゾ", "ゾ":"ソ",
+        "カ":"ガ", "ガ":"カ", "キ":"ギ", "ギ":"キ", "ク":"グ", "グ":"ク", "ケ":"ゲ", "ケ":"ケ", "コ":"ゴ", "ゴ":"コ",
+        "サ":"ザ", "ザ":"サ", "シ":"ジ", "ジ":"シ", "ス":"ズ", "ズ":"ス", "セ":"ゼ", "セ":"セ", "ソ":"ゾ", "ゾ":"ソ",
         "タ":"ダ", "ダ":"タ", "チ":"ヂ", "ヂ":"チ", "ツ":"ヅ", "ヅ":"ツ", "テ":"デ", "デ":"テ", "ト":"ド", "ド":"ト"
     };
     let last = inputText.slice(-1);
-    if (cycle[last]) {
-        inputText = inputText.slice(0, -1) + cycle[last];
-    }
+    if (cycle[last]) inputText = inputText.slice(0, -1) + cycle[last];
     document.getElementById('input-display').innerText = inputText;
 }
 
@@ -218,7 +260,7 @@ async function startRoulette() {
     inputText = "";
     document.getElementById('input-display').innerText = "";
     document.getElementById('btn-roulette').disabled = true;
-    document.getElementById('btn-mode-toggle').disabled = true; // プレイ中はモード変更不可
+    document.getElementById('btn-mode-toggle').disabled = true;
     
     for (let i = 0; i < 8; i++) {
         let l = Math.floor(Math.random() * 5) + 3;
@@ -229,7 +271,6 @@ async function startRoulette() {
     const length = Math.floor(Math.random() * 5) + 3;
     const wordList = WORDS[currentLanguage][length];
     currentWord = wordList[Math.floor(Math.random() * wordList.length)];
-    
     reversedWord = currentWord.split('').reverse().join('');
     displayChars = 0;
     
@@ -251,9 +292,7 @@ function revealChar() {
         displayChars++;
         updateWordDisplay();
     }
-    if (displayChars >= reversedWord.length) {
-        document.getElementById('btn-reveal').disabled = true;
-    }
+    if (displayChars >= reversedWord.length) document.getElementById('btn-reveal').disabled = true;
 }
 
 function checkAnswer() {
@@ -272,10 +311,10 @@ function resetRound() {
     inputText = "";
     document.getElementById('input-display').innerText = "";
     document.getElementById('btn-roulette').disabled = false;
-    document.getElementById('btn-mode-toggle').disabled = false; // モード変更を再び可能にする
+    document.getElementById('btn-mode-toggle').disabled = false;
     document.getElementById('btn-reveal').disabled = true;
     document.getElementById('word-display').innerHTML = "&nbsp;";
-    document.getElementById('main-label').innerText = "ルーレットを回してね！";
+    document.getElementById('main-label').innerText = "ルーレットをまわしてね！";
 }
 
 createKeyboard();
