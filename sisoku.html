@@ -260,24 +260,20 @@
         const n2Max = parseInt(document.getElementById('num2-max').value);
         const op = document.getElementById('operator').value;
         const diff = parseInt(document.getElementById('difficulty').value);
-        const allowNegative = document.getElementById('allow-negative').checked; // チェックボックスの状態
+        const allowNegative = document.getElementById('allow-negative').checked;
 
-        // 入力チェック
         if (n1Min > n1Max || n2Min > n2Max) {
             alert("「いちばん小さい数」は「いちばん大きい数」より小さくしてね！");
             return;
         }
 
-        // ★追加：マイナスの答えのチェック
         if (op === '-' && !allowNegative) {
-            // 1つ目の最大値 < 2つ目の最小値 の場合、確実に負になる
             if (n1Max < n2Min) {
                 alert("答えがマイナスにならないように設定してね！\n1つ目の最大値を2つ目の最小値以上にしてください。");
-                return; // スタートさせない
+                return;
             }
         }
 
-        // 画面切り替え
         document.getElementById('home-screen').style.display = 'none';
         document.getElementById('game-screen').style.display = 'block';
         document.getElementById('input-area').style.display = 'none';
@@ -290,7 +286,6 @@
         const opDisplay = op === '*' ? '×' : (op === '/' ? '÷' : op);
         document.getElementById('display-operator').innerText = opDisplay;
 
-        // ルーレット演出
         let rouletteCount = 0;
         const rouletteInterval = setInterval(() => {
             document.getElementById('display-num1').innerText = getRandomInt(n1Min, n1Max);
@@ -299,13 +294,21 @@
 
             if (rouletteCount > 30) {
                 clearInterval(rouletteInterval);
-                const finalNum1 = getRandomInt(n1Min, n1Max);
-                const finalNum2 = getRandomInt(n2Min, n2Max);
+                let finalNum1 = getRandomInt(n1Min, n1Max);
+                let finalNum2 = getRandomInt(n2Min, n2Max);
+
+                // ★ここを修正：マイナスがダメな場合、大きい方を必ず左（1つ目）にする
+                if (op === '-' && !allowNegative) {
+                    if (finalNum1 < finalNum2) {
+                        let temp = finalNum1;
+                        finalNum1 = finalNum2;
+                        finalNum2 = temp;
+                    }
+                }
                 
                 document.getElementById('display-num1').innerText = finalNum1;
                 document.getElementById('display-num2').innerText = finalNum2;
                 
-                // 正解の計算
                 if (op === '+') correctAnswer = finalNum1 + finalNum2;
                 if (op === '-') correctAnswer = finalNum1 - finalNum2;
                 if (op === '*') correctAnswer = finalNum1 * finalNum2;
@@ -317,7 +320,6 @@
                     document.getElementById('message').innerText = '';
                 }
 
-                // ゲーム開始
                 currentTimer = diff;
                 isPlaying = true;
                 document.getElementById('input-area').style.display = 'block';
@@ -337,7 +339,6 @@
     function checkAnswer() {
         if (!isPlaying) return;
         const userAnswer = parseFloat(document.getElementById('answer-input').value);
-        
         if (isNaN(userAnswer)) return;
 
         const msgObj = document.getElementById('message');
@@ -348,12 +349,10 @@
             document.getElementById('total-score').innerText = totalScore;
             endGame(`正解！ ${currentTimer}ポイントゲット！`, true);
         } else {
-            // 優しく、アニメーション付きでフィードバック
             msgObj.innerText = "おしい！もう一度計算してみよう！";
             msgObj.className = "wrong";
             document.getElementById('answer-input').value = '';
             document.getElementById('answer-input').focus();
-            // アニメーションを再適用するためにクラスを一瞬外す
             setTimeout(()=> msgObj.className = "wrong", 10);
         }
     }
@@ -367,15 +366,12 @@
         clearInterval(timerInterval);
         isPlaying = false;
         document.getElementById('input-area').style.display = 'none';
-        
         const msgObj = document.getElementById('message');
         msgObj.innerText = message;
         msgObj.className = isCorrect ? "correct" : "wrong";
-        
         if (!isCorrect) {
             msgObj.innerText += ` (答えは ${correctAnswer} でした)`;
         }
-
         document.getElementById('back-btn').style.display = 'block';
     }
 
@@ -390,6 +386,5 @@
         }
     });
 </script>
-
 </body>
 </html>
